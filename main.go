@@ -1,44 +1,53 @@
 package main
 
 import (
-	"fmt"
+	"database/sql"
+	"log"
 	"os"
 
-	"github.com/buck/blog/internal/config"
+	"github.com/buck/gator/internal/config"
+	"github.com/buck/gator/internal/database"
+	_ "github.com/lib/pq"
 )
 
 type state struct {
-	config *config.Config
-}
-
-type command struct {
-	name     string
-	argument []string
+	db  *database.Queries
+	cfg *config.Config
 }
 
 func main() {
 	cfg, err := config.Read()
 	if err != nil {
-		fmt.Println("Can't read")
-		return
+		log.Fatalf("error reading config: %v", err)
 	}
-	stateVar := state{&cfg}
+
+	db, err := sql.Open("postgres", cfg.DBURL)
+	if err != nil {
+		log.Fatalf("error connecting to db: %v", err)
+	}
+	defer db.Close()
+	dbQueries := database.New(db)
+
+	programState := &state{
+		db:  dbQueries,
+		cfg: &cfg,
+	}
+
 	cmds := commands{
 		registeredCommands: make(map[string]func(*state, command) error),
 	}
+	cmds.register("login", handlerLogin)
+	cmds.register("register", handlerRegister)
 
-	if len(os.Args) < 3 {
-		fmt.Println("Must contain atleast 2 commands")
-		os.Exit(1)
+	if len(os.Args) < 2 {
+		log.Fatal("Usage: cli <command> [args...]")
 	}
-	cmdname := os.Args[1]
-	arguments := os.Args[2]
-	cmds.register(cmdname, handlerLogin)
-	cmdVar := command{
-		name:     cmdname,
-		argument: make([]string, 5),
+
+	cmdName := os.Args[1]
+	cmdArgs := os.Args[2:]
+
+	err = cmds.run(programState, command{Name: cmdName, Args: cmdArgs})
+	if err != nil {
+		log.Fatal(err)
 	}
-	cmdVar.argument = []string{arguments}
-	cmds.run(&stateVar, cmdVar)
-	// fmt.Println(cfg)
 }
