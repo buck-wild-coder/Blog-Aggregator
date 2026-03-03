@@ -1,2 +1,2 @@
 -- name: Reset :exec
-TRUNCATE Table users;
+delete from users;
