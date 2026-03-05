@@ -41,7 +41,10 @@ func main() {
 	cmds.register("users", handlerGetUsers)
 	cmds.register("reset", handlerReset)
 	cmds.register("agg", fetchFeed)
-	cmds.register("addfeed", addfeed)
+	cmds.register("addfeed", middlewareLoggedIn(handlerAddFeed))
+	cmds.register("feeds", Handlerfeeds)
+	cmds.register("follow", middlewareLoggedIn(HandlerFollow))
+	cmds.register("following", middlewareLoggedIn(Handlerfollowing))
 
 	if len(os.Args) < 2 {
 		log.Fatal("Usage: cli <command> [args...]")
